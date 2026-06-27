@@ -14,7 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      competition_state: {
+        Row: {
+          current_round: number
+          id: number
+          round1_status: string
+          round2_status: string
+          top5_published: boolean
+          updated_at: string
+          winners_published: boolean
+        }
+        Insert: {
+          current_round?: number
+          id?: number
+          round1_status?: string
+          round2_status?: string
+          top5_published?: boolean
+          updated_at?: string
+          winners_published?: boolean
+        }
+        Update: {
+          current_round?: number
+          id?: number
+          round1_status?: string
+          round2_status?: string
+          top5_published?: boolean
+          updated_at?: string
+          winners_published?: boolean
+        }
+        Relationships: []
+      }
+      contestants: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          number: number
+          photo_url: string | null
+          qualified_round2: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          number: number
+          photo_url?: string | null
+          qualified_round2?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          number?: number
+          photo_url?: string | null
+          qualified_round2?: boolean
+        }
+        Relationships: []
+      }
+      judges: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      scores: {
+        Row: {
+          catwalk: number
+          confidence: number
+          contestant_id: string
+          created_at: string
+          creativity: number
+          id: string
+          judge_id: string
+          overall_appearance: number
+          round: number
+          stage_presence: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          catwalk: number
+          confidence: number
+          contestant_id: string
+          created_at?: string
+          creativity: number
+          id?: string
+          judge_id: string
+          overall_appearance: number
+          round: number
+          stage_presence: number
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          catwalk?: number
+          confidence?: number
+          contestant_id?: string
+          created_at?: string
+          creativity?: number
+          id?: string
+          judge_id?: string
+          overall_appearance?: number
+          round?: number
+          stage_presence?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scores_contestant_id_fkey"
+            columns: ["contestant_id"]
+            isOneToOne: false
+            referencedRelation: "contestants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scores_judge_id_fkey"
+            columns: ["judge_id"]
+            isOneToOne: false
+            referencedRelation: "judges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
