@@ -47,7 +47,6 @@ function AdminPage() {
             >
               <Input type="password" autoFocus value={pin} onChange={(e) => setPin(e.target.value)} placeholder="Admin PIN" className="h-12" />
               <Button type="submit" size="lg" className="w-full">Unlock</Button>
-              <p className="text-center text-xs text-muted-foreground">Default PIN: <code>{ADMIN_PIN}</code></p>
             </form>
           </CardContent>
         </Card>
