@@ -18,7 +18,9 @@ export type Database = {
         Row: {
           current_round: number
           id: number
+          round1_current_walk: number
           round1_status: string
+          round2_current_walk: number
           round2_status: string
           top5_published: boolean
           updated_at: string
@@ -27,7 +29,9 @@ export type Database = {
         Insert: {
           current_round?: number
           id?: number
+          round1_current_walk?: number
           round1_status?: string
+          round2_current_walk?: number
           round2_status?: string
           top5_published?: boolean
           updated_at?: string
@@ -36,7 +40,9 @@ export type Database = {
         Update: {
           current_round?: number
           id?: number
+          round1_current_walk?: number
           round1_status?: string
+          round2_current_walk?: number
           round2_status?: string
           top5_published?: boolean
           updated_at?: string
@@ -103,6 +109,7 @@ export type Database = {
           stage_presence: number
           total: number
           updated_at: string
+          walk: number
         }
         Insert: {
           catwalk: number
@@ -117,6 +124,7 @@ export type Database = {
           stage_presence: number
           total: number
           updated_at?: string
+          walk?: number
         }
         Update: {
           catwalk?: number
@@ -131,6 +139,7 @@ export type Database = {
           stage_presence?: number
           total?: number
           updated_at?: string
+          walk?: number
         }
         Relationships: [
           {

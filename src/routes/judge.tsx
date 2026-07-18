@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useJudge } from "@/lib/judge-auth";
 import { useCompetitionData } from "@/lib/use-competition-data";
-import { CATEGORIES, type CategoryKey, type Contestant } from "@/lib/competition";
+import { CATEGORIES, WALKS_PER_ROUND, type CategoryKey, type Contestant } from "@/lib/competition";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -36,6 +36,7 @@ function JudgePage() {
 
   const round = state?.current_round ?? 0;
   const roundStatus = round === 1 ? state?.round1_status : round === 2 ? state?.round2_status : "pending";
+  const walk = round === 1 ? state?.round1_current_walk ?? 1 : round === 2 ? state?.round2_current_walk ?? 1 : 1;
   const isOpen = roundStatus === "open";
 
   const activeContestants = useMemo<Contestant[]>(() => {
@@ -48,9 +49,9 @@ function JudgePage() {
   const existingScore = useMemo(() => {
     if (!judge || !current || !round) return null;
     return scores.find(
-      (s) => s.judge_id === judge.id && s.contestant_id === current.id && s.round === round,
+      (s) => s.judge_id === judge.id && s.contestant_id === current.id && s.round === round && s.walk === walk,
     );
-  }, [scores, judge, current, round]);
+  }, [scores, judge, current, round, walk]);
 
   useEffect(() => {
     if (existingScore) {
@@ -64,7 +65,7 @@ function JudgePage() {
     } else {
       setCats(emptyScores());
     }
-  }, [existingScore?.id, current?.id]);
+  }, [existingScore?.id, current?.id, walk]);
 
   const total = CATEGORIES.reduce((sum, c) => sum + (cats[c.key] || 0), 0);
 
@@ -74,12 +75,7 @@ function JudgePage() {
   if (!judge) return null;
 
   if (round === 0) {
-    return (
-      <EmptyState
-        title="Competition not started"
-        message="Waiting for the administrator to start Round 1."
-      />
-    );
+    return <EmptyState title="Competition not started" message="Waiting for the administrator to start Round 1." />;
   }
   if (activeContestants.length === 0) {
     return (
@@ -97,43 +93,65 @@ function JudgePage() {
       judge_id: judge.id,
       contestant_id: current.id,
       round,
+      walk,
       ...cats,
       total,
       updated_at: new Date().toISOString(),
     };
     const { error } = await supabase
       .from("scores")
-      .upsert(payload, { onConflict: "judge_id,contestant_id,round" });
+      .upsert(payload, { onConflict: "judge_id,contestant_id,round,walk" });
     setSaving(false);
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(`Saved score for #${current.number}`);
+      toast.success(`Saved Walk ${walk} score for #${current.number}`);
       if (idx < activeContestants.length - 1) setIdx(idx + 1);
     }
   }
 
   const scoredCount = activeContestants.filter((c) =>
-    scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round),
+    scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round && s.walk === walk),
   ).length;
+
+  const roundLabel = round === 2 ? "Final Round — Top 5" : "Round 1 — Preliminary";
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Round {round}</p>
-          <h1 className="font-display text-2xl font-bold">
-            {round === 2 ? "Final Round — Top 5" : "Round 1 — All Contestants"}
-          </h1>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            Round {round} · Walk {walk} of {WALKS_PER_ROUND}
+          </p>
+          <h1 className="font-display text-2xl font-bold">{roundLabel}</h1>
         </div>
         <Badge variant={isOpen ? "default" : "secondary"} className={isOpen ? "bg-gold text-black" : ""}>
           {isOpen ? "Open" : roundStatus === "closed" ? "Closed" : "Pending"}
         </Badge>
       </div>
 
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        {Array.from({ length: WALKS_PER_ROUND }).map((_, i) => {
+          const w = i + 1;
+          const active = w === walk;
+          return (
+            <span
+              key={w}
+              className={[
+                "rounded-full px-3 py-1 text-xs font-semibold",
+                active ? "bg-gold text-black" : w < walk ? "bg-gold-soft text-foreground" : "bg-secondary text-muted-foreground",
+              ].join(" ")}
+            >
+              Walk {w}
+            </span>
+          );
+        })}
+        <span className="ml-auto text-xs text-muted-foreground">Admin controls the current walk</span>
+      </div>
+
       <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
         <span>Contestant {idx + 1} of {activeContestants.length}</span>
-        <span>{scoredCount} / {activeContestants.length} scored</span>
+        <span>{scoredCount} / {activeContestants.length} scored this walk</span>
       </div>
       <div className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
         <div className="h-full bg-gold transition-all" style={{ width: `${((idx + 1) / activeContestants.length) * 100}%` }} />
@@ -150,7 +168,7 @@ function JudgePage() {
               )}
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Contestant</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Contestant · Walk {walk}</p>
               <h2 className="font-display text-3xl font-bold">#{current.number}</h2>
               <p className="text-sm text-muted-foreground">{current.name}</p>
             </div>
@@ -211,7 +229,7 @@ function JudgePage() {
               onClick={handleSubmit}
             >
               <Check className="mr-2 h-4 w-4" />
-              {existingScore ? "Update score" : "Submit score"}
+              {existingScore ? `Update Walk ${walk} score` : `Submit Walk ${walk} score`}
             </Button>
             <Button variant="outline" size="lg" disabled={idx === activeContestants.length - 1} onClick={() => setIdx(idx + 1)}>
               <ChevronRight className="h-4 w-4" />
@@ -224,7 +242,7 @@ function JudgePage() {
         <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Jump to contestant</h3>
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
           {activeContestants.map((c, i) => {
-            const scored = scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round);
+            const scored = scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round && s.walk === walk);
             const active = i === idx;
             return (
               <button
