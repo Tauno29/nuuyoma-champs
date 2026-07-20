@@ -55,5 +55,5 @@ export function useCompetitionData() {
     };
   }, []);
 
-  return { state, contestants, scores, judges, loading };
+  return { state, setState, contestants, scores, judges, loading };
 }

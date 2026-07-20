@@ -17,11 +17,22 @@ export function JudgeProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setJudge(JSON.parse(raw));
-    } catch {}
-    setLoading(false);
+    async function load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const j = JSON.parse(raw);
+          const { data } = await supabase.from("judges").select("id").eq("id", j.id).maybeSingle();
+          if (data) {
+            setJudge(j);
+          } else {
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+      } catch {}
+      setLoading(false);
+    }
+    load();
   }, []);
 
   const signIn = async (rawName: string) => {

@@ -25,9 +25,6 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
   --font-display: "Playfair Display", Georgia, serif;
@@ -36,51 +33,39 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.99 0.005 80);
-  --foreground: oklch(0.15 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.18 0 0);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.96 0.01 80);
-  --secondary-foreground: oklch(0.18 0 0);
-  --muted: oklch(0.96 0.005 80);
-  --muted-foreground: oklch(0.5 0.01 80);
-  --accent: oklch(0.82 0.13 85);
-  --accent-foreground: oklch(0.15 0 0);
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0.01 80);
-  --input: oklch(0.92 0.01 80);
-  --ring: oklch(0.82 0.13 85);
-  --gold: oklch(0.78 0.14 85);
-  --gold-soft: oklch(0.93 0.06 88);
-}
-
-.dark {
-  --background: oklch(0.12 0 0);
+  /* Deep obsidian/midnight black for maximum contrast */
+  --background: oklch(0.12 0.01 280);
   --foreground: oklch(0.98 0 0);
-  --card: oklch(0.16 0 0);
+  
+  /* Slightly lighter card background for depth */
+  --card: oklch(0.15 0.02 280);
   --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.16 0 0);
+  
+  --popover: oklch(0.15 0.02 280);
   --popover-foreground: oklch(0.98 0 0);
+  
   --primary: oklch(0.98 0 0);
-  --primary-foreground: oklch(0.15 0 0);
-  --secondary: oklch(0.22 0 0);
+  --primary-foreground: oklch(0.12 0.01 280);
+  
+  --secondary: oklch(0.20 0.03 280);
   --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.22 0 0);
+  
+  --muted: oklch(0.20 0.03 280);
   --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.78 0.14 85);
-  --accent-foreground: oklch(0.15 0 0);
+  
+  --accent: oklch(0.82 0.16 85);
+  --accent-foreground: oklch(0.12 0.01 280);
+  
   --destructive: oklch(0.6 0.22 27);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.25 0 0);
-  --input: oklch(0.25 0 0);
-  --ring: oklch(0.78 0.14 85);
-  --gold: oklch(0.78 0.14 85);
-  --gold-soft: oklch(0.3 0.05 85);
+  
+  --border: oklch(0.25 0.03 280);
+  --input: oklch(0.25 0.03 280);
+  --ring: oklch(0.82 0.16 85);
+  
+  /* Vibrant, metallic gold */
+  --gold: oklch(0.82 0.16 85);
+  --gold-soft: oklch(0.25 0.06 85);
 }
 
 @layer base {
@@ -89,6 +74,29 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    /* Subtle radial gradient to make it feel like a stage */
+    background-image: radial-gradient(circle at top center, oklch(0.18 0.04 280) 0%, oklch(0.12 0.01 280) 100%);
+    background-attachment: fixed;
   }
   h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.5)];
+  }
+  .glass-gold {
+    @apply bg-gold/5 backdrop-blur-xl border border-gold/20 shadow-[0_0_20px_rgba(212,175,55,0.15)];
+  }
+  .text-glow {
+    text-shadow: 0 0 10px var(--color-gold);
+  }
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
 }

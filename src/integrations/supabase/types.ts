@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           current_round: number
           id: number
+          leaderboard_visible: boolean
           round1_current_walk: number
           round1_status: string
           round2_current_walk: number
@@ -29,6 +30,7 @@ export type Database = {
         Insert: {
           current_round?: number
           id?: number
+          leaderboard_visible?: boolean
           round1_current_walk?: number
           round1_status?: string
           round2_current_walk?: number
@@ -40,6 +42,7 @@ export type Database = {
         Update: {
           current_round?: number
           id?: number
+          leaderboard_visible?: boolean
           round1_current_walk?: number
           round1_status?: string
           round2_current_walk?: number

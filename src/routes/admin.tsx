@@ -58,15 +58,17 @@ function AdminPage() {
 }
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
-  const { state, contestants, scores, judges, loading } = useCompetitionData();
+  const { state, setState, contestants, scores, judges, loading } = useCompetitionData();
 
   const r1 = useMemo(() => computeLeaderboard(contestants, scores, 1), [contestants, scores]);
   const r2Pool = useMemo(() => contestants.filter((c) => c.qualified_round2), [contestants]);
   const r2 = useMemo(() => computeLeaderboard(r2Pool, scores, 2), [r2Pool, scores]);
 
-  if (loading || !state) return <div className="py-12 text-center text-muted-foreground">Loading…</div>;
+  if (loading) return <div className="py-12 text-center text-muted-foreground">Loading…</div>;
+  if (!state) return <div className="py-12 text-center text-destructive">Database not initialized. Please run the SQL schema in your Supabase project.</div>;
 
   async function updateState(patch: Record<string, unknown>) {
+    if (state) setState({ ...state, ...patch } as any);
     const { error } = await supabase.from("competition_state").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", 1);
     if (error) toast.error(error.message);
   }
@@ -79,13 +81,38 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     await updateState({ round1_status: "closed" });
     toast.success("Round 1 closed");
   }
+  function validateWalkAdvancement(round: number, currentWalk: number, targetWalk: number) {
+    if (targetWalk <= currentWalk) return true; // allow going backwards freely
+    
+    // Check if any score for the current walk contains a 0
+    const currentScores = scores.filter(s => s.round === round && s.walk === currentWalk);
+    const zeroScore = currentScores.find(s => 
+      s.confidence === 0 || 
+      s.catwalk === 0 || 
+      s.creativity === 0 || 
+      s.stage_presence === 0 || 
+      s.overall_appearance === 0
+    );
+    
+    if (zeroScore) {
+      const judgeName = judges.find(j => j.id === zeroScore.judge_id)?.name || "Unknown Judge";
+      toast.error(`Cannot proceed! Judge ${judgeName} has a score of 0 recorded for this walk.`, { duration: 6000 });
+      return false;
+    }
+    return true;
+  }
+
   async function setRound1Walk(w: number) {
     if (w < 1 || w > WALKS_PER_ROUND) return;
+    if (!validateWalkAdvancement(1, state.round1_current_walk ?? 1, w)) return;
+    
     await updateState({ round1_current_walk: w });
     toast.success(`Round 1 · Walk ${w}`);
   }
   async function setRound2Walk(w: number) {
     if (w < 1 || w > WALKS_PER_ROUND) return;
+    if (!validateWalkAdvancement(2, state.round2_current_walk ?? 1, w)) return;
+    
     await updateState({ round2_current_walk: w });
     toast.success(`Round 2 · Walk ${w}`);
   }
@@ -110,6 +137,20 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   async function publishWinners() {
     await updateState({ winners_published: true });
     toast.success("Winners published");
+  }
+  async function toggleLeaderboardVisibility() {
+    const next = !state?.leaderboard_visible;
+    // Use separate update to avoid crashing other state updates if column doesn't exist
+    const { error } = await supabase
+      .from("competition_state")
+      .update({ leaderboard_visible: next, updated_at: new Date().toISOString() })
+      .eq("id", 1);
+    if (error) {
+      toast.error("Leaderboard toggle not available. Please run the SQL migration to add the 'leaderboard_visible' column.");
+      return;
+    }
+    if (state) setState({ ...state, leaderboard_visible: next } as any);
+    toast.success(`Leaderboard is now ${next ? "visible to judges" : "hidden from judges"}`);
   }
   async function resetCompetition() {
     await supabase.from("scores").delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -143,18 +184,19 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
-        <Stat icon={<Crown className="h-4 w-4" />} label="Current round" value={state.current_round === 0 ? "—" : `R${state.current_round} · W${state.current_round === 1 ? r1Walk : r2Walk}`} />
-        <Stat icon={<Users className="h-4 w-4" />} label="Judges" value={judges.length} />
-        <Stat icon={<Users className="h-4 w-4" />} label="Contestants" value={contestants.length} />
-        <Stat icon={<ListChecks className="h-4 w-4" />} label="Scores submitted" value={scores.length} />
+        <Stat href="#round-controls" icon={<Crown className="h-4 w-4 text-gold" />} label="Current round" value={state.current_round === 0 ? "—" : `R${state.current_round} · W${state.current_round === 1 ? r1Walk : r2Walk}`} />
+        <Stat href="#manage-judges" icon={<Users className="h-4 w-4 text-gold" />} label="Judges" value={judges.length} />
+        <Stat href="#leaderboard-preview" icon={<Users className="h-4 w-4 text-gold" />} label="Contestants" value={contestants.length} />
+        <Stat href="#leaderboard-preview" icon={<ListChecks className="h-4 w-4 text-gold" />} label="Scores submitted" value={scores.length} />
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardContent className="p-5">
+      <div id="round-controls" className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Card className="glass border-white/10 overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+          <CardContent className="p-5 relative">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl font-bold">Round 1 — Preliminary</h2>
-              <Badge className={state.round1_status === "open" ? "bg-gold text-black" : ""} variant={state.round1_status === "open" ? "default" : "secondary"}>
+              <h2 className="font-display text-xl font-bold text-white text-glow">Round 1 — Preliminary</h2>
+              <Badge className={state.round1_status === "open" ? "bg-gold text-black shadow-[0_0_10px_rgba(212,175,55,0.4)]" : "bg-white/10 text-white"} variant={state.round1_status === "open" ? "default" : "secondary"}>
                 {state.round1_status}
               </Badge>
             </div>
@@ -179,11 +221,12 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-5">
+        <Card className="glass border-white/10 overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+          <CardContent className="p-5 relative">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl font-bold">Round 2 — Finals</h2>
-              <Badge className={state.round2_status === "open" ? "bg-gold text-black" : ""} variant={state.round2_status === "open" ? "default" : "secondary"}>
+              <h2 className="font-display text-xl font-bold text-white text-glow">Round 2 — Finals</h2>
+              <Badge className={state.round2_status === "open" ? "bg-gold text-black shadow-[0_0_10px_rgba(212,175,55,0.4)]" : "bg-white/10 text-white"} variant={state.round2_status === "open" ? "default" : "secondary"}>
                 {state.round2_status}
               </Badge>
             </div>
@@ -209,13 +252,24 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         </Card>
       </div>
 
-      <Card className="mt-4">
+      <Card id="leaderboard-preview" className="mt-6 glass border-white/10">
         <CardContent className="p-5">
-          <h2 className="font-display text-xl font-bold">Live Leaderboard Preview</h2>
-          <p className="text-xs text-muted-foreground">
-            {state.current_round === 2 ? "Round 2 (Top 5) · cumulative across walks" : "Round 1 standings · cumulative across walks"}
-          </p>
-          <div className="mt-3 space-y-1 text-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl font-bold text-white text-glow">Live Leaderboard Preview</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                {state.current_round === 2 ? "Round 2 (Top 5) · cumulative across walks" : "Round 1 standings · cumulative across walks"}
+              </p>
+            </div>
+            <Button 
+              variant={state.leaderboard_visible ? "default" : "outline"} 
+              className={state.leaderboard_visible ? "bg-gold text-black hover:bg-gold-soft shadow-[0_0_15px_rgba(212,175,55,0.4)]" : "text-muted-foreground"}
+              onClick={toggleLeaderboardVisibility}
+            >
+              {state.leaderboard_visible ? "Visible to Judges" : "Hidden from Judges"}
+            </Button>
+          </div>
+          <div className="mt-4 space-y-1 text-sm">
             {(state.current_round === 2 ? r2 : r1).slice(0, 10).map((e) => (
               <div key={e.contestant.id} className="flex items-center justify-between border-b py-1.5 last:border-0">
                 <span className="font-mono w-8 text-muted-foreground">{e.rank}.</span>
@@ -231,10 +285,10 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card id="manage-judges" className="mt-4 glass border-white/10">
         <CardContent className="p-5">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-bold">Manage Judges</h2>
+            <h2 className="font-display text-xl font-bold text-white text-glow">Manage Judges</h2>
             <Badge variant="secondary">{judges.length} active</Badge>
           </div>
           <p className="text-sm text-muted-foreground">Removing a judge deletes their account and all scores they've submitted — cumulative averages update instantly.</p>
@@ -276,9 +330,9 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         </CardContent>
       </Card>
 
-      <Card className="mt-4 border-destructive/30">
+      <Card className="mt-4 glass border-destructive/40 shadow-[0_0_15px_rgba(220,38,38,0.1)]">
         <CardContent className="p-5">
-          <h2 className="font-display text-xl font-bold text-destructive">Danger Zone</h2>
+          <h2 className="font-display text-xl font-bold text-destructive drop-shadow-[0_0_5px_rgba(220,38,38,0.4)]">Danger Zone</h2>
           <p className="text-sm text-muted-foreground">Reset the competition. This deletes all scores and clears finalist qualifications.</p>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -327,7 +381,7 @@ function WalkControls({ disabled, walk, onPrev, onNext, onSet }: { disabled: boo
               onClick={() => onSet(w)}
               className={[
                 "flex-1 rounded-md py-1.5 text-xs font-semibold transition",
-                active ? "bg-gold text-black" : "bg-background hover:bg-secondary",
+                active ? "bg-blue-600 text-white" : w < walk ? "bg-green-600 text-white" : "bg-background hover:bg-secondary",
                 disabled ? "opacity-50" : "",
               ].join(" ")}
             >
@@ -340,13 +394,17 @@ function WalkControls({ disabled, walk, onPrev, onNext, onSet }: { disabled: boo
   );
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
-  return (
-    <Card>
+function Stat({ icon, label, value, href }: { icon: React.ReactNode; label: string; value: React.ReactNode; href?: string }) {
+  const content = (
+    <Card className={`glass border-white/10 hover:bg-white/5 transition-colors ${href ? "cursor-pointer hover:border-gold/50" : ""}`}>
       <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">{icon}{label}</div>
-        <p className="mt-1 font-display text-2xl font-bold">{value}</p>
+        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-white/50">{icon}{label}</div>
+        <p className="mt-1 font-display text-3xl font-bold text-white text-glow">{value}</p>
       </CardContent>
     </Card>
   );
+  if (href) {
+    return <a href={href} className="block hover:scale-[1.02] transition-transform">{content}</a>;
+  }
+  return content;
 }

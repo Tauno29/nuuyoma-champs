@@ -10,6 +10,7 @@ export type CompetitionState = {
   round2_current_walk: number;
   top5_published: boolean;
   winners_published: boolean;
+  leaderboard_visible?: boolean;
   updated_at: string;
 };
 
