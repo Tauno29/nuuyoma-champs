@@ -15,7 +15,7 @@ import { Lock, Play, Square, Trophy, RotateCcw, Users, ListChecks, Crown, Chevro
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin — Miss Champs" }] }),
+  head: () => ({ meta: [{ title: "Admin — PAGENTS MODELLING SYS" }] }),
   component: AdminPage,
 });
 

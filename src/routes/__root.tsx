@@ -52,14 +52,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Miss Champs Modelling — Nuuyoma SSS Judging" },
-      { name: "description", content: "Live judging app for the Nuuyoma Senior Secondary School Miss Champs Modelling Competition." },
+      { title: "PAGENTS MODELLING SYS — Nuuyoma SSS Judging" },
+      { name: "description", content: "Live judging app for the Nuuyoma Senior Secondary School PAGENTS MODELLING SYS Competition." },
       { name: "theme-color", content: "#000000" },
-      { property: "og:title", content: "Miss Champs Modelling — Nuuyoma SSS Judging" },
-      { property: "og:description", content: "Live judging app for the Nuuyoma Senior Secondary School Miss Champs Modelling Competition." },
+      { property: "og:title", content: "PAGENTS MODELLING SYS — Nuuyoma SSS Judging" },
+      { property: "og:description", content: "Live judging app for the Nuuyoma Senior Secondary School PAGENTS MODELLING SYS Competition." },
       { property: "og:type", content: "website" },
-      { name: "twitter:title", content: "Miss Champs Modelling — Nuuyoma SSS Judging" },
-      { name: "twitter:description", content: "Live judging app for the Nuuyoma Senior Secondary School Miss Champs Modelling Competition." },
+      { name: "twitter:title", content: "PAGENTS MODELLING SYS — Nuuyoma SSS Judging" },
+      { name: "twitter:description", content: "Live judging app for the Nuuyoma Senior Secondary School PAGENTS MODELLING SYS Competition." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9f6aecb2-c8ae-49ef-9975-6d38385f0231/id-preview-1d286b3d--3b41afae-75b9-4203-8c3b-8203bc16ee23.lovable.app-1782583044527.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9f6aecb2-c8ae-49ef-9975-6d38385f0231/id-preview-1d286b3d--3b41afae-75b9-4203-8c3b-8203bc16ee23.lovable.app-1782583044527.png" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -99,7 +99,7 @@ function Nav() {
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
           <Crown className="h-6 w-6 text-gold" />
-          <span className="font-display text-lg font-bold tracking-tight">Miss Champs</span>
+          <span className="font-display text-lg font-bold tracking-tight">PAGENTS MODELLING SYS</span>
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           {judge && (

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, Medal, Trophy, User } from "lucide-react";
 
 export const Route = createFileRoute("/leaderboard")({
-  head: () => ({ meta: [{ title: "Leaderboard — Miss Champs" }] }),
+  head: () => ({ meta: [{ title: "Leaderboard — PAGENTS MODELLING SYS" }] }),
   component: LeaderboardPage,
 });
 

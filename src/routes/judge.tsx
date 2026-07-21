@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, Check, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/judge")({
-  head: () => ({ meta: [{ title: "Score — Miss Champs" }] }),
+  head: () => ({ meta: [{ title: "Score — PAGENTS MODELLING SYS" }] }),
   component: JudgePage,
 });
 
