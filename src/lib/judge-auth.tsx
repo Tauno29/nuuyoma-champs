@@ -1,15 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type Judge = { id: string; name: string; approved?: boolean };
-type SignInResult = { error?: string; pending?: boolean; judge?: Judge };
-
+type Judge = { id: string; name: string };
 type Ctx = {
   judge: Judge | null;
   loading: boolean;
-  signIn: (name: string) => Promise<SignInResult>;
+  signIn: (name: string) => Promise<{ error?: string }>;
   signOut: () => void;
-  finalizeSignIn: (j: Judge) => void;
 };
 
 const JudgeCtx = createContext<Ctx | null>(null);
@@ -25,9 +22,8 @@ export function JudgeProvider({ children }: { children: ReactNode }) {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const j = JSON.parse(raw);
-          // Only log them in if they are still approved
-          const { data } = await supabase.from("judges").select("id, approved").eq("id", j.id).maybeSingle();
-          if (data && data.approved) {
+          const { data } = await supabase.from("judges").select("id").eq("id", j.id).maybeSingle();
+          if (data) {
             setJudge(j);
           } else {
             localStorage.removeItem(STORAGE_KEY);
@@ -39,41 +35,28 @@ export function JudgeProvider({ children }: { children: ReactNode }) {
     load();
   }, []);
 
-  const signIn = async (rawName: string): Promise<SignInResult> => {
+  const signIn = async (rawName: string) => {
     const name = rawName.trim().replace(/\s+/g, " ");
     if (name.length < 2) return { error: "Please enter your full name." };
-    
     // Try fetch existing
     const { data: existing } = await supabase
       .from("judges")
-      .select("id, name, approved")
+      .select("id, name")
       .ilike("name", name)
       .maybeSingle();
-      
     let j: Judge | null = existing ?? null;
-    
     if (!j) {
-      // Create new request
       const { data, error } = await supabase
         .from("judges")
         .insert({ name })
-        .select("id, name, approved")
+        .select("id, name")
         .single();
       if (error) return { error: error.message };
       j = data;
     }
-
-    if (!j.approved) {
-      return { pending: true, judge: j };
-    }
-
-    finalizeSignIn(j);
-    return { judge: j };
-  };
-
-  const finalizeSignIn = (j: Judge) => {
     setJudge(j);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(j));
+    return {};
   };
 
   const signOut = () => {
@@ -82,7 +65,7 @@ export function JudgeProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <JudgeCtx.Provider value={{ judge, loading, signIn, signOut, finalizeSignIn }}>
+    <JudgeCtx.Provider value={{ judge, loading, signIn, signOut }}>
       {children}
     </JudgeCtx.Provider>
   );

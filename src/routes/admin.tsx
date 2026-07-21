@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useCompetitionData } from "@/lib/use-competition-data";
 import { ADMIN_PIN, WALKS_PER_ROUND, computeLeaderboard } from "@/lib/competition";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,54 +59,6 @@ function AdminPage() {
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const { state, setState, contestants, scores, judges, loading } = useCompetitionData();
-
-  useEffect(() => {
-    // Notify admin for any existing pending requests
-    async function checkPending() {
-      const { data } = await supabase.from("judges").select("*").eq("approved", false);
-      if (data) {
-        data.forEach((judge) => {
-          toast("New Login Request", {
-            description: `${judge.name} is trying to access the judging panel.`,
-            duration: Infinity,
-            action: {
-              label: "Allow",
-              onClick: () => supabase.from("judges").update({ approved: true }).eq("id", judge.id)
-            },
-            cancel: {
-              label: "Block",
-              onClick: () => supabase.from("judges").delete().eq("id", judge.id)
-            }
-          });
-        });
-      }
-    }
-    checkPending();
-
-    // Listen for new requests in real-time
-    const channel = supabase
-      .channel("admin_judge_approval")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "judges", filter: "approved=eq.false" }, (payload) => {
-        const judge = payload.new;
-        toast("New Login Request", {
-          description: `${judge.name} is trying to access the judging panel.`,
-          duration: Infinity,
-          action: {
-            label: "Allow",
-            onClick: () => supabase.from("judges").update({ approved: true }).eq("id", judge.id)
-          },
-          cancel: {
-            label: "Block",
-            onClick: () => supabase.from("judges").delete().eq("id", judge.id)
-          }
-        });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   const r1 = useMemo(() => computeLeaderboard(contestants, scores, 1), [contestants, scores]);
   const r2Pool = useMemo(() => contestants.filter((c) => c.qualified_round2), [contestants]);
@@ -221,15 +173,6 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const r1Walk = state.round1_current_walk ?? 1;
   const r2Walk = state.round2_current_walk ?? 1;
 
-  const activeJudges = judges.filter((j) => j.approved);
-  const pendingJudges = judges.filter((j) => !j.approved);
-
-  async function approveJudge(id: string) {
-    const { error } = await supabase.from("judges").update({ approved: true }).eq("id", id);
-    if (error) toast.error(error.message);
-    else toast.success("Judge approved");
-  }
-
   return (
     <div>
       <div className="flex items-start justify-between gap-2">
@@ -242,7 +185,7 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-4">
         <Stat href="#round-controls" icon={<Crown className="h-4 w-4 text-gold" />} label="Current round" value={state.current_round === 0 ? "—" : `R${state.current_round} · W${state.current_round === 1 ? r1Walk : r2Walk}`} />
-        <Stat href="#manage-judges" icon={<Users className="h-4 w-4 text-gold" />} label="Judges" value={activeJudges.length} />
+        <Stat href="#manage-judges" icon={<Users className="h-4 w-4 text-gold" />} label="Judges" value={judges.length} />
         <Stat href="#leaderboard-preview" icon={<Users className="h-4 w-4 text-gold" />} label="Contestants" value={contestants.length} />
         <Stat href="#leaderboard-preview" icon={<ListChecks className="h-4 w-4 text-gold" />} label="Scores submitted" value={scores.length} />
       </div>
@@ -346,36 +289,12 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
         <CardContent className="p-5">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-bold text-white text-glow">Manage Judges</h2>
-            <Badge variant="secondary">{activeJudges.length} active</Badge>
+            <Badge variant="secondary">{judges.length} active</Badge>
           </div>
           <p className="text-sm text-muted-foreground">Removing a judge deletes their account and all scores they've submitted — cumulative averages update instantly.</p>
-          
-          {pendingJudges.length > 0 && (
-            <div className="mt-6 mb-4 rounded-lg border border-gold/30 bg-gold/5 p-4">
-              <h3 className="font-display text-lg font-bold text-gold mb-3 flex items-center gap-2">
-                <Users className="h-4 w-4" /> Pending Approvals ({pendingJudges.length})
-              </h3>
-              <div className="space-y-3">
-                {pendingJudges.map((j) => (
-                  <div key={j.id} className="flex items-center justify-between bg-black/40 rounded p-3">
-                    <span className="font-medium">{j.name}</span>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => removeJudge(j.id, j.name)}>
-                        Block
-                      </Button>
-                      <Button size="sm" className="bg-gold text-black hover:bg-gold/90" onClick={() => approveJudge(j.id)}>
-                        Allow
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-5 divide-y">
-            {activeJudges.length === 0 && <p className="py-4 text-sm text-muted-foreground">No judges are currently active.</p>}
-            {activeJudges.map((j) => {
+          <div className="mt-3 divide-y">
+            {judges.length === 0 && <p className="py-4 text-sm text-muted-foreground">No judges have signed in yet.</p>}
+            {judges.map((j) => {
               const jScores = scores.filter((s) => s.judge_id === j.id).length;
               return (
                 <div key={j.id} className="flex items-center justify-between gap-3 py-2">
