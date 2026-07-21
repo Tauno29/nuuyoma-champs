@@ -12,7 +12,7 @@ export default defineConfig(({ command }) => ({
     tanstackStart({
       server: { entry: "server" },
     }),
-    command === "build" ? nitro({ defaultPreset: "cloudflare-module" }) : null,
+    command === "build" ? nitro({ defaultPreset: process.env.NITRO_PRESET || "cloudflare-module" }) : null,
     react(),
   ],
   resolve: {
