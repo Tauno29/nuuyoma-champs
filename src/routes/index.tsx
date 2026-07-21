@@ -11,7 +11,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Sign in — PAGENTS MODELLING SYS" },
-      { name: "description", content: "Judge sign-in for the Nuuyoma SSS PAGENTS MODELLING SYS Competition." },
+      { name: "description", content: "Judge sign-in for the PAGENTS MODELLING SYS Competition." },
     ],
   }),
   component: Index,
@@ -41,7 +41,7 @@ function Index() {
         <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gold/10 ring-1 ring-gold/30 shadow-[0_0_30px_rgba(212,175,55,0.2)] animate-float">
           <Crown className="h-10 w-10 text-gold drop-shadow-[0_0_8px_rgba(212,175,55,0.8)]" />
         </div>
-        <p className="mt-6 text-xs uppercase tracking-[0.2em] text-gold/70">Nuuyoma Senior Secondary School</p>
+        <p className="mt-6 text-xs uppercase tracking-[0.1em] text-gold/90 italic">"Elegance is the only beauty that never fades."</p>
         <h1 className="mt-2 font-display text-4xl font-bold sm:text-5xl text-glow text-white">PAGENTS MODELLING SYS</h1>
         <p className="mt-2 font-display text-xl text-gold">Modelling Competition</p>
         <p className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground bg-white/5 px-4 py-1.5 rounded-full border border-white/10">
