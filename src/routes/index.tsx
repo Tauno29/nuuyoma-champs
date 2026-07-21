@@ -29,7 +29,21 @@ function Index() {
   useEffect(() => {
     if (!pendingId || !pendingJudge) return;
     
-    // Subscribe to this specific judge's row
+    // Polling fallback in case Supabase Realtime isn't enabled for the table
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from("judges").select("approved").eq("id", pendingId).maybeSingle();
+      if (!data) {
+        toast.error("Your login request was blocked by the admin.");
+        setPendingId(null);
+        setPendingJudge(null);
+      } else if (data.approved) {
+        toast.success("Login approved! Welcome, " + pendingJudge.name);
+        finalizeSignIn({ id: pendingId, name: pendingJudge.name, approved: true });
+        navigate({ to: "/judge" });
+      }
+    }, 3000);
+
+    // Subscribe to this specific judge's row for instant updates
     const channel = supabase
       .channel("judge_approval")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "judges", filter: `id=eq.${pendingId}` }, (payload) => {
@@ -47,6 +61,7 @@ function Index() {
       .subscribe();
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, [pendingId, pendingJudge, finalizeSignIn, navigate]);

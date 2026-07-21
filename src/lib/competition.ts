@@ -37,7 +37,7 @@ export type Score = {
   updated_at: string;
 };
 
-export type Judge = { id: string; name: string };
+export type Judge = { id: string; name: string; approved: boolean; };
 
 export type LeaderboardEntry = {
   contestant: Contestant;
