@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Crown, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Crown, Sparkles, Loader2 } from "lucide-react";
 import { useJudge } from "@/lib/judge-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,18 +19,51 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const { judge, signIn } = useJudge();
+  const { judge, signIn, finalizeSignIn } = useJudge();
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingJudge, setPendingJudge] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!pendingId || !pendingJudge) return;
+    
+    // Subscribe to this specific judge's row
+    const channel = supabase
+      .channel("judge_approval")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "judges", filter: `id=eq.${pendingId}` }, (payload) => {
+        if (payload.new.approved) {
+          toast.success("Login approved! Welcome, " + pendingJudge.name);
+          finalizeSignIn(payload.new as any);
+          navigate({ to: "/judge" });
+        }
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "judges", filter: `id=eq.${pendingId}` }, () => {
+        toast.error("Your login request was blocked by the admin.");
+        setPendingId(null);
+        setPendingJudge(null);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pendingId, pendingJudge, finalizeSignIn, navigate]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(name);
+    const result = await signIn(name);
     setLoading(false);
-    if (error) toast.error(error);
-    else {
+    
+    if (result.error) {
+      toast.error(result.error);
+    } else if (result.pending && result.judge) {
+      setPendingId(result.judge.id);
+      setPendingJudge(result.judge);
+      toast.info("Login request sent. Waiting for admin approval...");
+    } else {
       toast.success("Welcome, " + name.trim());
       navigate({ to: "/judge" });
     }
@@ -58,6 +92,15 @@ function Index() {
               <p className="mt-2 font-display text-2xl font-bold text-white text-glow">{judge.name}</p>
               <Button className="mt-6 w-full bg-gold text-black hover:bg-gold-soft transition-all duration-300 hover:scale-[1.02] shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:shadow-[0_0_25px_rgba(212,175,55,0.5)] font-semibold" size="lg" onClick={() => navigate({ to: "/judge" })}>
                 Continue judging
+              </Button>
+            </div>
+          ) : pendingId ? (
+            <div className="text-center py-6">
+              <Loader2 className="mx-auto h-10 w-10 animate-spin text-gold mb-4" />
+              <h3 className="text-xl font-display text-white mb-2">Waiting for Approval</h3>
+              <p className="text-sm text-muted-foreground">Please wait while an administrator approves your access to the judging panel.</p>
+              <Button variant="outline" className="mt-6 border-gold/30 text-gold hover:bg-gold/10" onClick={() => { setPendingId(null); setPendingJudge(null); }}>
+                Cancel
               </Button>
             </div>
           ) : (

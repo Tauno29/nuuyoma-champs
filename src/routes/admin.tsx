@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useCompetitionData } from "@/lib/use-competition-data";
 import { ADMIN_PIN, WALKS_PER_ROUND, computeLeaderboard } from "@/lib/competition";
 import { supabase } from "@/integrations/supabase/client";
@@ -59,6 +59,54 @@ function AdminPage() {
 
 function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const { state, setState, contestants, scores, judges, loading } = useCompetitionData();
+
+  useEffect(() => {
+    // Notify admin for any existing pending requests
+    async function checkPending() {
+      const { data } = await supabase.from("judges").select("*").eq("approved", false);
+      if (data) {
+        data.forEach((judge) => {
+          toast("New Login Request", {
+            description: `${judge.name} is trying to access the judging panel.`,
+            duration: Infinity,
+            action: {
+              label: "Allow",
+              onClick: () => supabase.from("judges").update({ approved: true }).eq("id", judge.id)
+            },
+            cancel: {
+              label: "Block",
+              onClick: () => supabase.from("judges").delete().eq("id", judge.id)
+            }
+          });
+        });
+      }
+    }
+    checkPending();
+
+    // Listen for new requests in real-time
+    const channel = supabase
+      .channel("admin_judge_approval")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "judges", filter: "approved=eq.false" }, (payload) => {
+        const judge = payload.new;
+        toast("New Login Request", {
+          description: `${judge.name} is trying to access the judging panel.`,
+          duration: Infinity,
+          action: {
+            label: "Allow",
+            onClick: () => supabase.from("judges").update({ approved: true }).eq("id", judge.id)
+          },
+          cancel: {
+            label: "Block",
+            onClick: () => supabase.from("judges").delete().eq("id", judge.id)
+          }
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const r1 = useMemo(() => computeLeaderboard(contestants, scores, 1), [contestants, scores]);
   const r2Pool = useMemo(() => contestants.filter((c) => c.qualified_round2), [contestants]);
