@@ -104,14 +104,14 @@ function AdminDashboard({ onLogout }: { onLogout: () => void }) {
 
   async function setRound1Walk(w: number) {
     if (w < 1 || w > WALKS_PER_ROUND) return;
-    if (!validateWalkAdvancement(1, state.round1_current_walk ?? 1, w)) return;
+    if (!validateWalkAdvancement(1, state?.round1_current_walk ?? 1, w)) return;
     
     await updateState({ round1_current_walk: w });
     toast.success(`Round 1 · Walk ${w}`);
   }
   async function setRound2Walk(w: number) {
     if (w < 1 || w > WALKS_PER_ROUND) return;
-    if (!validateWalkAdvancement(2, state.round2_current_walk ?? 1, w)) return;
+    if (!validateWalkAdvancement(2, state?.round2_current_walk ?? 1, w)) return;
     
     await updateState({ round2_current_walk: w });
     toast.success(`Round 2 · Walk ${w}`);
