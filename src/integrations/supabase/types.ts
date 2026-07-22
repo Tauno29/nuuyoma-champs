@@ -19,11 +19,9 @@ export type Database = {
           current_round: number
           id: number
           leaderboard_visible: boolean
-          round1_current_walk: number
-          round1_status: string
-          round2_current_walk: number
-          round2_status: string
+          round_status: string
           top5_published: boolean
+          top3_published: boolean
           updated_at: string
           winners_published: boolean
         }
@@ -31,11 +29,9 @@ export type Database = {
           current_round?: number
           id?: number
           leaderboard_visible?: boolean
-          round1_current_walk?: number
-          round1_status?: string
-          round2_current_walk?: number
-          round2_status?: string
+          round_status?: string
           top5_published?: boolean
+          top3_published?: boolean
           updated_at?: string
           winners_published?: boolean
         }
@@ -43,11 +39,9 @@ export type Database = {
           current_round?: number
           id?: number
           leaderboard_visible?: boolean
-          round1_current_walk?: number
-          round1_status?: string
-          round2_current_walk?: number
-          round2_status?: string
+          round_status?: string
           top5_published?: boolean
+          top3_published?: boolean
           updated_at?: string
           winners_published?: boolean
         }
@@ -57,26 +51,26 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_top5: boolean
           name: string
           number: number
           photo_url: string | null
-          qualified_round2: boolean
         }
         Insert: {
           created_at?: string
           id?: string
+          is_top5?: boolean
           name: string
           number: number
           photo_url?: string | null
-          qualified_round2?: boolean
         }
         Update: {
           created_at?: string
           id?: string
+          is_top5?: boolean
           name?: string
           number?: number
           photo_url?: string | null
-          qualified_round2?: boolean
         }
         Relationships: []
       }
@@ -115,7 +109,6 @@ export type Database = {
           stage_presence: number
           total: number
           updated_at: string
-          walk: number
         }
         Insert: {
           catwalk: number
@@ -130,7 +123,6 @@ export type Database = {
           stage_presence: number
           total: number
           updated_at?: string
-          walk?: number
         }
         Update: {
           catwalk?: number
@@ -145,7 +137,6 @@ export type Database = {
           stage_presence?: number
           total?: number
           updated_at?: string
-          walk?: number
         }
         Relationships: [
           {

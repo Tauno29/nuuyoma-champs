@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useJudge } from "@/lib/judge-auth";
 import { useCompetitionData } from "@/lib/use-competition-data";
-import { CATEGORIES, WALKS_PER_ROUND, computeLeaderboard, type CategoryKey, type Contestant } from "@/lib/competition";
+import { CATEGORIES, computeLeaderboard, type CategoryKey, type Contestant } from "@/lib/competition";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -47,15 +47,13 @@ function JudgePage() {
   }, [state?.leaderboard_visible, navigate]);
 
   const round = state?.current_round ?? 0;
-  const roundStatus = round === 1 ? state?.round1_status : round === 2 ? state?.round2_status : "pending";
-  const walk = round === 1 ? state?.round1_current_walk ?? 1 : round === 2 ? state?.round2_current_walk ?? 1 : 1;
+  const roundStatus = state?.round_status ?? "pending";
   const isOpen = roundStatus === "open";
 
   const activeContestants = useMemo<Contestant[]>(() => {
-    if (round === 2) {
-      const qualified = contestants.filter((c) => c.qualified_round2);
-      // Sort the qualified contestants by their Round 1 performance (leaderboard rank)
-      const leaderboard = computeLeaderboard(qualified, scores, 1);
+    if (round >= 5) {
+      const top5 = contestants.filter((c) => c.is_top5);
+      const leaderboard = computeLeaderboard(top5, scores, [1, 2, 3, 4]);
       return leaderboard.map((l) => l.contestant);
     }
     return contestants;
@@ -66,9 +64,9 @@ function JudgePage() {
   const existingScore = useMemo(() => {
     if (!judge || !current || !round) return null;
     return scores.find(
-      (s) => s.judge_id === judge.id && s.contestant_id === current.id && s.round === round && s.walk === walk,
+      (s) => s.judge_id === judge.id && s.contestant_id === current.id && s.round === round,
     );
-  }, [scores, judge, current, round, walk]);
+  }, [scores, judge, current, round]);
 
   useEffect(() => {
     if (existingScore) {
@@ -82,7 +80,7 @@ function JudgePage() {
     } else {
       setCats(emptyScores());
     }
-  }, [existingScore?.id, current?.id, walk]);
+  }, [existingScore?.id, current?.id, round]);
 
   const total = CATEGORIES.reduce((sum, c) => sum + (cats[c.key] || 0), 0);
 
@@ -98,7 +96,7 @@ function JudgePage() {
     return (
       <EmptyState
         title="No contestants to score"
-        message={round === 2 ? "The Top 5 finalists haven't been published yet." : "No contestants are registered."}
+        message={round >= 5 ? "The Top 5 finalists haven't been published yet." : "No contestants are registered."}
       />
     );
   }
@@ -119,35 +117,34 @@ function JudgePage() {
       judge_id: judge.id,
       contestant_id: current.id,
       round,
-      walk,
       ...cats,
       total,
       updated_at: new Date().toISOString(),
     };
     const { error } = await supabase
       .from("scores")
-      .upsert(payload, { onConflict: "judge_id,contestant_id,round,walk" });
+      .upsert(payload, { onConflict: "judge_id,contestant_id,round" });
     setSaving(false);
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(`Saved Walk ${walk} score for #${current.number}`);
+      toast.success(`Saved Round ${round} score for #${current.number}`);
       if (idx < activeContestants.length - 1) setIdx(idx + 1);
     }
   }
 
   const scoredCount = activeContestants.filter((c) =>
-    scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round && s.walk === walk),
+    scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round),
   ).length;
 
-  const roundLabel = round === 2 ? "Final Round — Top 5" : "Round 1 — Preliminary";
+  const roundLabel = round >= 5 ? `Round ${round} — Top 5 Finals` : `Round ${round} — Preliminary Phase`;
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Round {round} · Walk {walk} of {WALKS_PER_ROUND}
+            Round {round} of 7
           </p>
           <h1 className="font-display text-2xl font-bold">{roundLabel}</h1>
         </div>
@@ -156,28 +153,9 @@ function JudgePage() {
         </Badge>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        {Array.from({ length: WALKS_PER_ROUND }).map((_, i) => {
-          const w = i + 1;
-          const active = w === walk;
-          return (
-            <span
-              key={w}
-              className={[
-                "rounded-full px-3 py-1 text-xs font-semibold",
-                active ? "bg-blue-600 text-white" : w < walk ? "bg-green-600 text-white" : "bg-secondary text-muted-foreground",
-              ].join(" ")}
-            >
-              Walk {w}
-            </span>
-          );
-        })}
-        <span className="ml-auto text-xs text-muted-foreground">Admin controls the current walk</span>
-      </div>
-
       <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
         <span>Contestant {idx + 1} of {activeContestants.length}</span>
-        <span>{scoredCount} / {activeContestants.length} scored this walk</span>
+        <span>{scoredCount} / {activeContestants.length} scored this round</span>
       </div>
       <div className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
         <div className="h-full bg-gold transition-all" style={{ width: `${((idx + 1) / activeContestants.length) * 100}%` }} />
@@ -195,7 +173,7 @@ function JudgePage() {
               )}
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wider text-gold/70">Contestant · Walk {walk}</p>
+              <p className="text-xs uppercase tracking-wider text-gold/70">Contestant · Round {round}</p>
               <h2 className="font-display text-3xl font-bold text-white text-glow">#{current.number}</h2>
               <p className="text-sm text-white/80">{current.name}</p>
             </div>
@@ -257,7 +235,7 @@ function JudgePage() {
               onClick={handleSubmit}
             >
               <Check className="mr-2 h-5 w-5 drop-shadow-sm" />
-              {existingScore ? `Update Walk ${walk} score` : `Submit Walk ${walk} score`}
+              {existingScore ? `Update Round ${round} score` : `Submit Round ${round} score`}
             </Button>
             <Button variant="outline" size="lg" className="h-12 bg-white/5 border-white/10 hover:bg-white/10 text-white" disabled={idx === activeContestants.length - 1} onClick={() => setIdx(idx + 1)}>
               <ChevronRight className="h-4 w-4" />
@@ -270,7 +248,7 @@ function JudgePage() {
         <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gold/70">Jump to contestant</h3>
         <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
           {activeContestants.map((c, i) => {
-            const scored = scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round && s.walk === walk);
+            const scored = scores.some((s) => s.judge_id === judge.id && s.contestant_id === c.id && s.round === round);
             const active = i === idx;
             return (
               <button

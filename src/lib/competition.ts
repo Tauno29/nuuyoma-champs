@@ -1,14 +1,13 @@
 export const ADMIN_PIN = "champs2025";
-export const WALKS_PER_ROUND = 4;
+export const TOTAL_INITIAL_ROUNDS = 4;
+export const TOTAL_FINAL_ROUNDS = 3; // Rounds 5, 6, 7
 
 export type CompetitionState = {
   id: number;
-  current_round: number;
-  round1_status: "pending" | "open" | "closed";
-  round2_status: "pending" | "open" | "closed";
-  round1_current_walk: number;
-  round2_current_walk: number;
+  current_round: number; // 0 = pending, 1-4 = initial rounds, 5-7 = top 5 final rounds
+  round_status: "pending" | "open" | "closed";
   top5_published: boolean;
+  top3_published: boolean;
   winners_published: boolean;
   leaderboard_visible?: boolean;
   updated_at: string;
@@ -19,7 +18,7 @@ export type Contestant = {
   number: number;
   name: string;
   photo_url: string | null;
-  qualified_round2: boolean;
+  is_top5: boolean;
 };
 
 export type Score = {
@@ -27,7 +26,6 @@ export type Score = {
   judge_id: string;
   contestant_id: string;
   round: number;
-  walk: number;
   confidence: number;
   catwalk: number;
   creativity: number;
@@ -41,21 +39,27 @@ export type Judge = { id: string; name: string; approved: boolean; };
 
 export type LeaderboardEntry = {
   contestant: Contestant;
-  average: number; // average of per-judge cumulative totals across walks
-  total: number; // sum of every score across judges & walks
-  judgeCount: number; // distinct judges who scored at least one walk
-  walksScored: number; // total (judge × walk) score rows
+  average: number; // average of per-judge cumulative totals across included rounds
+  total: number; // sum of scores across judges & included rounds
+  judgeCount: number; // distinct judges who scored
+  scoresCount: number; // total score rows
   rank: number;
 };
 
 export function computeLeaderboard(
   contestants: Contestant[],
   scores: Score[],
-  round: number,
+  roundsFilter?: number | number[],
 ): LeaderboardEntry[] {
+  const targetRounds = Array.isArray(roundsFilter)
+    ? roundsFilter
+    : typeof roundsFilter === "number" && roundsFilter > 0
+    ? [roundsFilter]
+    : null;
+
   const byContestant = new Map<string, Score[]>();
   for (const s of scores) {
-    if (s.round !== round) continue;
+    if (targetRounds && !targetRounds.includes(s.round)) continue;
     if (!byContestant.has(s.contestant_id)) byContestant.set(s.contestant_id, []);
     byContestant.get(s.contestant_id)!.push(s);
   }
@@ -73,7 +77,7 @@ export function computeLeaderboard(
       average,
       total,
       judgeCount: perJudge.size,
-      walksScored: list.length,
+      scoresCount: list.length,
       rank: 0,
     };
   });
